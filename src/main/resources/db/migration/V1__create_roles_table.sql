@@ -1,0 +1,11 @@
+CREATE TABLE roles (
+    id   SMALLINT PRIMARY KEY,
+    name VARCHAR(30) NOT NULL UNIQUE
+);
+
+INSERT INTO roles (id, name) VALUES
+    (1, 'ADMIN'),
+    (2, 'EMPLOYEE'),
+    (3, 'FACILITY_MANAGER'),
+    (4, 'DEPARTMENT_MANAGER'),
+    (5, 'RESOURCE_OPERATOR');

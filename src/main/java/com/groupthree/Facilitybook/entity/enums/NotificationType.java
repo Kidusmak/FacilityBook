@@ -1,0 +1,12 @@
+package com.groupthree.Facilitybook.entity.enums;
+
+public enum NotificationType {
+    RESERVATION_CONFIRMED,
+    RESERVATION_APPROVED,
+    RESERVATION_REJECTED,
+    RESERVATION_CANCELLED,
+    RESERVATION_REMINDER,
+    MAINTENANCE_CONFLICT,
+    MAINTENANCE_SCHEDULED,
+    SYSTEM
+}

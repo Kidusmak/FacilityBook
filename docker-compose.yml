@@ -1,0 +1,39 @@
+# No active session/container detected, so the app uses the default port 8080.
+# Port 5432 is already taken by a local PostgreSQL on this machine,
+# so the compose Postgres is exposed on host port 5433 instead.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: facilitybook-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: facilitybook
+      POSTGRES_USER: facilitybook
+      POSTGRES_PASSWORD: facilitybook
+    ports:
+      - "5433:5432"
+    volumes:
+      - facilitybook-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U facilitybook -d facilitybook"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: facilitybook-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/facilitybook
+      SPRING_DATASOURCE_USERNAME: facilitybook
+      SPRING_DATASOURCE_PASSWORD: facilitybook
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+    ports:
+      - "8080:8080"
+
+volumes:
+  facilitybook-db-data:
