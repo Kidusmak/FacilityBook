@@ -8,4 +8,6 @@ import java.util.List;
 public interface ReservationApprovalRepository extends JpaRepository<ReservationApproval, Long> {
 
     List<ReservationApproval> findByReservationIdOrderByDecidedAtAsc(Long reservationId);
+
+    boolean existsByReservationId(Long reservationId);
 }
