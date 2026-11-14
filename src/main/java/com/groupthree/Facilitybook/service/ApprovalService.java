@@ -90,7 +90,7 @@ public class ApprovalService {
     @Transactional
     public ReservationResponse decide(Long reservationId, ApprovalDecisionRequest request) {
         UserPrincipal principal = currentUser.require();
-        Reservation reservation = reservationRepository.findById(reservationId)
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new NotFoundException(
                         "Reservation " + reservationId + " was not found"));
 

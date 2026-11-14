@@ -167,7 +167,7 @@ class ReservationServiceTest {
         reservation.setStartTime(futureStart());
 
         when(currentUser.require()).thenReturn(principal(99L, "EMPLOYEE", null));
-        when(reservationRepository.findById(5L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(reservation));
 
         assertThatThrownBy(() -> service.cancel(5L, null))
                 .isInstanceOf(AccessDeniedException.class);
@@ -184,7 +184,7 @@ class ReservationServiceTest {
         reservation.setStartTime(futureStart());
 
         when(currentUser.require()).thenReturn(principal(1L, "FACILITY_MANAGER", 1L));
-        when(reservationRepository.findById(7L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(reservation));
         when(reservationRepository.save(any(Reservation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(approvalRepository.findByReservationIdOrderByDecidedAtAsc(7L)).thenReturn(List.of());

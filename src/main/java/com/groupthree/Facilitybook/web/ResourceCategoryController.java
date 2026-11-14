@@ -23,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/resource-categories")
-@Tag(name = "Resource categories")
+@Tag(name = "Resource categories",
+        description = "Resource classification and the approval policy applied to each category.")
 public class ResourceCategoryController {
 
     private final ResourceCategoryService categoryService;

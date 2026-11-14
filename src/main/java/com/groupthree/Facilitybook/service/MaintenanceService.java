@@ -18,10 +18,12 @@ import com.groupthree.Facilitybook.repository.ReservationRepository;
 import com.groupthree.Facilitybook.repository.ResourceRepository;
 import com.groupthree.Facilitybook.repository.UserRepository;
 import com.groupthree.Facilitybook.security.CurrentUser;
+import com.groupthree.Facilitybook.security.UserPrincipal;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +42,9 @@ public class MaintenanceService {
     private static final Set<MaintenanceStatus> BLOCKING_STATUSES =
             EnumSet.of(MaintenanceStatus.REPORTED, MaintenanceStatus.SCHEDULED,
                     MaintenanceStatus.IN_PROGRESS);
+    private static final String ROLE_ADMIN = "ADMIN";
+    private static final String ROLE_FACILITY_MANAGER = "FACILITY_MANAGER";
+    private static final String ROLE_RESOURCE_OPERATOR = "RESOURCE_OPERATOR";
     private static final Map<MaintenanceStatus, Set<MaintenanceStatus>> ALLOWED_TRANSITIONS =
             buildTransitions();
 
@@ -99,11 +104,20 @@ public class MaintenanceService {
         if (status != MaintenanceStatus.REPORTED && status != MaintenanceStatus.SCHEDULED) {
             throw new BadRequestException("New maintenance must start as REPORTED or SCHEDULED");
         }
+        UserPrincipal principal = currentUser.require();
+        // Every employee may report a damaged resource, but only facility staff can
+        // pre-schedule a maintenance window.
+        if (status == MaintenanceStatus.SCHEDULED
+                && !ReservationService.hasAnyRole(principal, ROLE_ADMIN, ROLE_FACILITY_MANAGER,
+                        ROLE_RESOURCE_OPERATOR)) {
+            throw new AccessDeniedException(
+                    "Only facility staff can schedule a maintenance window");
+        }
 
         Resource resource = resourceRepository.findById(request.resourceId())
                 .orElseThrow(() -> new NotFoundException(
                         "Resource " + request.resourceId() + " was not found"));
-        User reporter = userRepository.getReferenceById(currentUser.id());
+        User reporter = userRepository.getReferenceById(principal.getId());
 
         MaintenanceRecord record = new MaintenanceRecord();
         record.setResource(resource);
@@ -121,7 +135,7 @@ public class MaintenanceService {
 
     @Transactional
     public MaintenanceResponse update(Long id, MaintenanceUpdateRequest request) {
-        MaintenanceRecord record = find(id);
+        MaintenanceRecord record = findForUpdate(id);
         MaintenanceStatus current = record.getStatus();
         MaintenanceStatus next = request.status();
 
@@ -137,10 +151,11 @@ public class MaintenanceService {
             if (record.getCompletedAt() == null) {
                 record.setCompletedAt(Instant.now());
             }
-            // Only pull the window end in if maintenance actually started; otherwise the
-            // end must stay after the start to satisfy the database check constraint.
-            if (record.getStartTime().isBefore(Instant.now())) {
-                record.setEndTime(Instant.now());
+            // Only pull the window end in when the window is currently running; never move the
+            // end before the start (that would violate chk_maintenance_times).
+            Instant now = Instant.now();
+            if (record.getStartTime().isBefore(now) && record.getEndTime().isAfter(now)) {
+                record.setEndTime(now);
             }
         }
         MaintenanceRecord saved = maintenanceRepository.save(record);
@@ -198,6 +213,11 @@ public class MaintenanceService {
 
     private MaintenanceRecord find(Long id) {
         return maintenanceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Maintenance record " + id + " was not found"));
+    }
+
+    private MaintenanceRecord findForUpdate(Long id) {
+        return maintenanceRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new NotFoundException("Maintenance record " + id + " was not found"));
     }
 

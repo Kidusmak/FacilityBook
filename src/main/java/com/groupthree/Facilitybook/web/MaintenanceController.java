@@ -27,7 +27,8 @@ import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/maintenance")
-@Tag(name = "Maintenance")
+@Tag(name = "Maintenance",
+        description = "Damage reports, scheduled maintenance windows and status history.")
 public class MaintenanceController {
 
     private static final String FACILITY_STAFF =
@@ -57,7 +58,7 @@ public class MaintenanceController {
     }
 
     @PostMapping
-    @PreAuthorize(FACILITY_STAFF)
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
     public MaintenanceResponse create(@Valid @RequestBody MaintenanceCreateRequest request) {
         return maintenanceService.create(request);

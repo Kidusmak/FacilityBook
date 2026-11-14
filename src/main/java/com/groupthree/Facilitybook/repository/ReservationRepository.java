@@ -9,15 +9,26 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface ReservationRepository
         extends JpaRepository<Reservation, Long>, JpaSpecificationExecutor<Reservation> {
+
+    /**
+     * Row lock used by every state-changing reservation operation. Two approvers (or a
+     * cancel racing an approval) can never act on the same stale snapshot.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reservation r where r.id = :id")
+    Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Overlap test for [startTime, endTime) against reservations in the given statuses.

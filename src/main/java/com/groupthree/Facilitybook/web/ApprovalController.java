@@ -18,7 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/approvals")
-@Tag(name = "Approvals")
+@Tag(name = "Approvals",
+        description = "Pending approval queue and approve/reject decisions with reasons.")
 public class ApprovalController {
 
     private static final String APPROVERS =

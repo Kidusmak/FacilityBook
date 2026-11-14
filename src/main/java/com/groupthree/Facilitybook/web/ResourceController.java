@@ -32,7 +32,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/resources")
-@Tag(name = "Resources")
+@Tag(name = "Resources",
+        description = "Resource catalogue, operating hours, availability search and status.")
 public class ResourceController {
 
     private static final String MANAGERS = "hasAnyRole('ADMIN','FACILITY_MANAGER')";

@@ -19,7 +19,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/reports")
 @PreAuthorize("hasAnyRole('ADMIN','FACILITY_MANAGER','DEPARTMENT_MANAGER','RESOURCE_OPERATOR')")
-@Tag(name = "Reports")
+@Tag(name = "Reports",
+        description = "Reservation, utilization, department, peak-time and downtime analytics.")
 public class ReportController {
 
     private final ReportService reportService;

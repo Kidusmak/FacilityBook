@@ -31,7 +31,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/reservations")
-@Tag(name = "Reservations")
+@Tag(name = "Reservations",
+        description = "Create, inspect, reschedule, cancel and resolve facility bookings.")
 public class ReservationController {
 
     private static final String STAFF =

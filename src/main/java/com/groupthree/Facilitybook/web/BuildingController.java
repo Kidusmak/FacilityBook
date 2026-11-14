@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/buildings")
-@Tag(name = "Buildings")
+@Tag(name = "Buildings", description = "Building and location reference data.")
 public class BuildingController {
 
     private static final String MANAGERS = "hasAnyRole('ADMIN','FACILITY_MANAGER')";

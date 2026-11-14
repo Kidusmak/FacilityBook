@@ -26,6 +26,7 @@ import com.groupthree.Facilitybook.repository.ResourceRepository;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -33,6 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -55,19 +59,22 @@ public class ResourceService {
     private final OperatingHourRepository operatingHourRepository;
     private final ReservationRepository reservationRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
+    private final ZoneId zone;
 
     public ResourceService(ResourceRepository resourceRepository,
                            ResourceCategoryRepository categoryRepository,
                            BuildingRepository buildingRepository,
                            OperatingHourRepository operatingHourRepository,
                            ReservationRepository reservationRepository,
-                           MaintenanceRecordRepository maintenanceRecordRepository) {
+                           MaintenanceRecordRepository maintenanceRecordRepository,
+                           @Value("${app.timezone:Europe/Istanbul}") String timezone) {
         this.resourceRepository = resourceRepository;
         this.categoryRepository = categoryRepository;
         this.buildingRepository = buildingRepository;
         this.operatingHourRepository = operatingHourRepository;
         this.reservationRepository = reservationRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
+        this.zone = ZoneId.of(timezone);
     }
 
     public PageResponse<ResourceResponse> list(String search, Long categoryId, Long buildingId,
@@ -116,6 +123,32 @@ public class ResourceService {
                     return cb.and(cb.not(cb.exists(reservationSubquery)),
                             cb.not(cb.exists(maintenanceSubquery)));
                 });
+
+        ZonedDateTime localStart = startTime.atZone(zone);
+        ZonedDateTime localEnd = endTime.atZone(zone);
+        if (localStart.toLocalDate().equals(localEnd.minusNanos(1).toLocalDate())) {
+            Short dayOfWeek = (short) localStart.getDayOfWeek().getValue();
+            LocalTime openTime = localStart.toLocalTime();
+            LocalTime closeTime = localEnd.minusNanos(1).toLocalTime();
+            specification = specification.and((root, query, cb) -> {
+                // Resources without any operating-hours rows are always bookable; resources
+                // that define hours must be open for the whole requested window.
+                Subquery<Long> anyHours = query.subquery(Long.class);
+                Root<OperatingHour> anyHour = anyHours.from(OperatingHour.class);
+                anyHours.select(cb.literal(1L)).where(
+                        cb.equal(anyHour.get("resource").get("id"), root.get("id")));
+
+                Subquery<Long> openHours = query.subquery(Long.class);
+                Root<OperatingHour> hour = openHours.from(OperatingHour.class);
+                openHours.select(cb.literal(1L)).where(
+                        cb.equal(hour.get("resource").get("id"), root.get("id")),
+                        cb.equal(hour.get("dayOfWeek"), dayOfWeek),
+                        cb.lessThanOrEqualTo(hour.get("openTime"), openTime),
+                        cb.greaterThanOrEqualTo(hour.get("closeTime"), closeTime));
+
+                return cb.or(cb.not(cb.exists(anyHours)), cb.exists(openHours));
+            });
+        }
 
         Page<Resource> page = resourceRepository.findAll(specification, pageable);
         return PageResponse.from(page, ResourceResponse::from);

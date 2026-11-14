@@ -88,7 +88,7 @@ public class ReservationService {
                               ReservationApprovalRepository approvalRepository,
                               NotificationService notificationService,
                               CurrentUser currentUser,
-                              @Value("${app.timezone:UTC}") String timezone) {
+                              @Value("${app.timezone:Europe/Istanbul}") String timezone) {
         this.reservationRepository = reservationRepository;
         this.resourceRepository = resourceRepository;
         this.userRepository = userRepository;
@@ -103,8 +103,8 @@ public class ReservationService {
     @Transactional
     public ReservationResponse create(ReservationCreateRequest request) {
         UserPrincipal principal = currentUser.require();
-        Resource resource = findResource(request.resourceId());
         validateWindow(request.startTime(), request.endTime(), true);
+        Resource resource = findResource(request.resourceId());
         ensureResourceIsActive(resource);
         ensureWithinOperatingHours(resource, request.startTime(), request.endTime());
         ensureNoMaintenance(resource, request.startTime(), request.endTime());
@@ -184,7 +184,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse reschedule(Long id, ReservationRescheduleRequest request) {
         UserPrincipal principal = currentUser.require();
-        Reservation reservation = find(id);
+        Reservation reservation = findForUpdate(id);
         if (!principal.getId().equals(reservation.getRequester().getId())) {
             throw new AccessDeniedException("Only the requester can reschedule this reservation");
         }
@@ -202,6 +202,8 @@ public class ReservationService {
 
         reservation.setStartTime(request.startTime());
         reservation.setEndTime(request.endTime());
+        // The new slot was just checked against maintenance, so any older conflict flag is stale.
+        reservation.setNeedsResolution(false);
 
         boolean reapproval = reservation.getStatus() == ReservationStatus.CONFIRMED
                 && resource.getCategory().isRequiresApproval();
@@ -230,7 +232,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse cancel(Long id, ReservationCancelRequest request) {
         UserPrincipal principal = currentUser.require();
-        Reservation reservation = find(id);
+        Reservation reservation = findForUpdate(id);
         boolean self = principal.getId().equals(reservation.getRequester().getId());
         boolean staff = hasAnyRole(principal, ROLE_ADMIN, ROLE_FACILITY_MANAGER);
 
@@ -271,7 +273,7 @@ public class ReservationService {
         if (!hasAnyRole(principal, ROLE_ADMIN, ROLE_FACILITY_MANAGER, ROLE_RESOURCE_OPERATOR)) {
             throw new AccessDeniedException("Only facility staff can resolve maintenance conflicts");
         }
-        Reservation reservation = find(id);
+        Reservation reservation = findForUpdate(id);
         if (!reservation.isNeedsResolution()) {
             throw new ConflictException("Reservation is not flagged for maintenance resolution");
         }
@@ -305,6 +307,15 @@ public class ReservationService {
 
     public Reservation find(Long id) {
         return reservationRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Reservation " + id + " was not found"));
+    }
+
+    /**
+     * Same lookup as {@link #find(Long)} but takes a row lock. Every method that mutates a
+     * reservation uses this so concurrent approve/cancel/reschedule requests are serialised.
+     */
+    private Reservation findForUpdate(Long id) {
+        return reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new NotFoundException("Reservation " + id + " was not found"));
     }
 

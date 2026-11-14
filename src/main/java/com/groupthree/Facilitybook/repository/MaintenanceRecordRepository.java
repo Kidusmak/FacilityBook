@@ -4,15 +4,23 @@ import com.groupthree.Facilitybook.entity.MaintenanceRecord;
 import com.groupthree.Facilitybook.entity.enums.MaintenanceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface MaintenanceRecordRepository
         extends JpaRepository<MaintenanceRecord, Long>, JpaSpecificationExecutor<MaintenanceRecord> {
+
+    /** Serialises status transitions so two operators cannot complete the same record twice. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from MaintenanceRecord m where m.id = :id")
+    Optional<MaintenanceRecord> findByIdForUpdate(@Param("id") Long id);
 
     List<MaintenanceRecord> findByResourceIdAndStatusInAndStartTimeLessThanAndEndTimeGreaterThan(
             Long resourceId,

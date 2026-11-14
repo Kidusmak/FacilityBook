@@ -30,7 +30,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @PreAuthorize("hasRole('ADMIN')")
-@Tag(name = "Users")
+@Tag(name = "Users", description = "User, role and account administration (ADMIN only).")
 public class UserController {
 
     private final UserService userService;
