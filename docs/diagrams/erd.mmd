@@ -1,0 +1,119 @@
+erDiagram
+    ROLES ||--o{ USERS : "assigned to"
+    ROLES ||--o{ RESOURCE_CATEGORIES : "approver for"
+    DEPARTMENTS ||--o{ USERS : "employs"
+    BUILDINGS ||--o{ RESOURCES : "hosts"
+    RESOURCE_CATEGORIES ||--o{ RESOURCES : "classifies"
+    RESOURCES ||--o{ OPERATING_HOURS : "open during"
+    RESOURCES ||--o{ RESERVATIONS : "booked as"
+    USERS ||--o{ RESERVATIONS : "requests"
+    RESERVATIONS ||--o{ RESERVATION_APPROVALS : "decided by"
+    USERS ||--o{ RESERVATION_APPROVALS : "approves"
+    RESOURCES ||--o{ MAINTENANCE_RECORDS : "maintained via"
+    USERS ||--o{ MAINTENANCE_RECORDS : "reports"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    RESERVATIONS ||--o{ NOTIFICATIONS : "about"
+
+    ROLES {
+        smallint id PK
+        varchar name UK
+    }
+    DEPARTMENTS {
+        bigint id PK
+        varchar name UK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    USERS {
+        bigint id PK
+        varchar email UK
+        varchar password_hash
+        varchar full_name
+        smallint role_id FK
+        bigint department_id FK
+        boolean active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    BUILDINGS {
+        bigint id PK
+        varchar name UK
+        varchar address
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    RESOURCE_CATEGORIES {
+        bigint id PK
+        varchar name UK
+        varchar description
+        boolean requires_approval
+        smallint approver_role_id FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    RESOURCES {
+        bigint id PK
+        varchar name
+        text description
+        bigint category_id FK
+        bigint building_id FK
+        varchar floor
+        varchar location_detail
+        integer capacity
+        varchar features
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    OPERATING_HOURS {
+        bigint id PK
+        bigint resource_id FK
+        smallint day_of_week
+        time open_time
+        time close_time
+    }
+    RESERVATIONS {
+        bigint id PK
+        bigint resource_id FK
+        bigint requester_id FK
+        varchar purpose
+        text notes
+        timestamptz start_time
+        timestamptz end_time
+        varchar status
+        boolean needs_resolution
+        timestamptz cancelled_at
+        varchar cancellation_reason
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    RESERVATION_APPROVALS {
+        bigint id PK
+        bigint reservation_id FK
+        bigint approver_id FK
+        varchar decision
+        varchar reason
+        timestamptz decided_at
+    }
+    MAINTENANCE_RECORDS {
+        bigint id PK
+        bigint resource_id FK
+        bigint reported_by FK
+        text reason
+        varchar status
+        timestamptz start_time
+        timestamptz end_time
+        timestamptz completed_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    NOTIFICATIONS {
+        bigint id PK
+        bigint user_id FK
+        varchar type
+        varchar title
+        varchar message
+        bigint reservation_id FK
+        boolean is_read
+        timestamptz created_at
+    }

@@ -50,6 +50,8 @@ public interface ReservationRepository
 
     Page<Reservation> findByRequesterId(Long requesterId, Pageable pageable);
 
+    boolean existsByRequesterId(Long requesterId);
+
     boolean existsByResourceId(Long resourceId);
 
     List<Reservation> findByResourceIdAndStatusInAndStartTimeLessThanAndEndTimeGreaterThan(

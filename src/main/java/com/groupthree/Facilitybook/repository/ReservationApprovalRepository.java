@@ -10,4 +10,6 @@ public interface ReservationApprovalRepository extends JpaRepository<Reservation
     List<ReservationApproval> findByReservationIdOrderByDecidedAtAsc(Long reservationId);
 
     boolean existsByReservationId(Long reservationId);
+
+    boolean existsByApproverId(Long approverId);
 }

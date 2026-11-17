@@ -32,6 +32,8 @@ public interface MaintenanceRecordRepository
 
     boolean existsByResourceId(Long resourceId);
 
+    boolean existsByReportedById(Long reportedById);
+
     long countByStartTimeLessThanAndEndTimeGreaterThan(Instant to, Instant from);
 
     @Query(value = """

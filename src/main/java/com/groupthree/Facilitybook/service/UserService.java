@@ -10,6 +10,9 @@ import com.groupthree.Facilitybook.entity.User;
 import com.groupthree.Facilitybook.exception.ConflictException;
 import com.groupthree.Facilitybook.exception.NotFoundException;
 import com.groupthree.Facilitybook.repository.DepartmentRepository;
+import com.groupthree.Facilitybook.repository.MaintenanceRecordRepository;
+import com.groupthree.Facilitybook.repository.ReservationApprovalRepository;
+import com.groupthree.Facilitybook.repository.ReservationRepository;
 import com.groupthree.Facilitybook.repository.RoleRepository;
 import com.groupthree.Facilitybook.repository.UserRepository;
 import com.groupthree.Facilitybook.security.CurrentUser;
@@ -32,17 +35,26 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final DepartmentRepository departmentRepository;
+    private final ReservationRepository reservationRepository;
+    private final ReservationApprovalRepository reservationApprovalRepository;
+    private final MaintenanceRecordRepository maintenanceRecordRepository;
     private final PasswordEncoder passwordEncoder;
     private final CurrentUser currentUser;
 
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        DepartmentRepository departmentRepository,
+                       ReservationRepository reservationRepository,
+                       ReservationApprovalRepository reservationApprovalRepository,
+                       MaintenanceRecordRepository maintenanceRecordRepository,
                        PasswordEncoder passwordEncoder,
                        CurrentUser currentUser) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.departmentRepository = departmentRepository;
+        this.reservationRepository = reservationRepository;
+        this.reservationApprovalRepository = reservationApprovalRepository;
+        this.maintenanceRecordRepository = maintenanceRecordRepository;
         this.passwordEncoder = passwordEncoder;
         this.currentUser = currentUser;
     }
@@ -115,6 +127,21 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(request.password()));
         }
         return UserResponse.from(userRepository.save(user));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        User user = find(id);
+        if (id.equals(currentUser.id())) {
+            throw new ConflictException("You cannot remove your own account");
+        }
+        if (reservationRepository.existsByRequesterId(id)
+                || reservationApprovalRepository.existsByApproverId(id)
+                || maintenanceRecordRepository.existsByReportedById(id)) {
+            throw new ConflictException(
+                    "This user has reservation or maintenance history and cannot be removed. Deactivate the account instead.");
+        }
+        userRepository.delete(user);
     }
 
     private User find(Long id) {

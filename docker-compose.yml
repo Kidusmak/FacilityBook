@@ -2,6 +2,9 @@
 # Copy .env.example to .env to override any value (credentials, ports, JWT secret).
 # Defaults are safe for local demo use; host Postgres port defaults to 5433 to
 # avoid clashing with a local PostgreSQL that commonly already uses 5432.
+# Pin the project name so container/volume/network names stay stable even if the
+# repository folder is renamed.
+name: facilitybook
 services:
   db:
     image: postgres:16-alpine

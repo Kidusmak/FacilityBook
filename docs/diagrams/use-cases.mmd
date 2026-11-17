@@ -1,0 +1,56 @@
+flowchart LR
+    emp([Employee])
+    fm([Facility Manager])
+    dm([Department Manager])
+    ro([Resource Operator])
+    adm([Admin])
+    sys([Scheduler])
+
+    subgraph FacilityBook
+        UC1[Log in]
+        UC2[Search available resources]
+        UC3[Create reservation]
+        UC4[View own reservation history]
+        UC5[Cancel / reschedule reservation]
+        UC6[Report damaged resource]
+        UC7[View notifications]
+        UC8[Approve / reject reservation]
+        UC9[Manage resources and operating hours]
+        UC10[Manage categories, buildings, departments]
+        UC11[Schedule / update maintenance]
+        UC12[Resolve maintenance conflict]
+        UC13[View reports and analytics]
+        UC14[Manage users and roles]
+        UC15[Send upcoming reminders]
+    end
+
+    emp --> UC1
+    emp --> UC2
+    emp --> UC3
+    emp --> UC4
+    emp --> UC5
+    emp --> UC6
+    emp --> UC7
+
+    fm --> UC8
+    fm --> UC9
+    fm --> UC11
+    fm --> UC12
+    fm --> UC13
+
+    dm --> UC8
+    dm --> UC13
+
+    ro --> UC9
+    ro --> UC11
+    ro --> UC12
+    ro --> UC13
+
+    adm --> UC8
+    adm --> UC9
+    adm --> UC10
+    adm --> UC11
+    adm --> UC13
+    adm --> UC14
+
+    sys --> UC15

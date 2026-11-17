@@ -18,6 +18,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -83,6 +87,10 @@ class SecurityAuthorizationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isForbidden());
 
+        mockMvc.perform(delete("/api/users/1")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(get("/api/maintenance")
                         .header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isForbidden());
@@ -125,6 +133,28 @@ class SecurityAuthorizationTest {
     }
 
     @Test
+    void originalUsersAndDepartmentsAreAvailableWithoutRestoredFrontendSamples() throws Exception {
+        String admin = login(ADMIN);
+
+        mockMvc.perform(get("/api/users")
+                        .param("page", "0")
+                        .param("size", "100")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].email", hasItem(ADMIN)))
+                .andExpect(jsonPath("$.content[*].email", not(hasItem("abebe@example.com"))));
+
+        mockMvc.perform(get("/api/departments")
+                        .param("page", "0")
+                        .param("size", "100")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", hasItems(
+                        "Engineering", "Human Resources", "Facilities", "IT", "Finance")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Administration"))));
+    }
+
+    @Test
     void adminCanCreateResourceAndEmployeeCannotResolveConflicts() throws Exception {
         String admin = login(ADMIN);
         mockMvc.perform(post("/api/resources")
@@ -152,6 +182,71 @@ class SecurityAuthorizationTest {
                                 {"action":"CANCEL_RESERVATION","note":"not allowed"}
                                 """))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCanDeleteUnusedUserButCannotDeleteUserWithReservationHistoryOrOwnAccount() throws Exception {
+        String admin = login(ADMIN);
+        String email = "removable." + System.nanoTime() + "@facilitybook.local";
+        MvcResult created = mockMvc.perform(post("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"Password123!","fullName":"Removable User","roleId":2,"active":true}
+                                """.formatted(email)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long removableId = ((Number) JsonPath.read(
+                created.getResponse().getContentAsString(), "$.id")).longValue();
+
+        mockMvc.perform(delete("/api/users/" + removableId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/users/" + removableId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isNotFound());
+
+        MvcResult adminResponse = mockMvc.perform(get("/api/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isOk())
+                .andReturn();
+        long adminId = ((Number) JsonPath.read(
+                adminResponse.getResponse().getContentAsString(), "$.id")).longValue();
+
+        mockMvc.perform(delete("/api/users/" + adminId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("You cannot remove your own account"));
+
+        String historyEmail = "history." + System.nanoTime() + "@facilitybook.local";
+        MvcResult historyUser = mockMvc.perform(post("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"Password123!","fullName":"History User","roleId":2,"departmentId":1,"active":true}
+                                """.formatted(historyEmail)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long historyUserId = ((Number) JsonPath.read(
+                historyUser.getResponse().getContentAsString(), "$.id")).longValue();
+        long resourceId = createResource(admin, "Deletion History Room " + System.nanoTime());
+        String historyToken = login(historyEmail);
+        Instant start = Instant.now().plus(14, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
+
+        mockMvc.perform(post("/api/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(historyToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"resourceId":%d,"purpose":"Keep user history","startTime":"%s","endTime":"%s"}
+                                """.formatted(resourceId, start, start.plus(1, ChronoUnit.HOURS))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(delete("/api/users/" + historyUserId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "This user has reservation or maintenance history and cannot be removed. Deactivate the account instead."));
     }
 
     @Test

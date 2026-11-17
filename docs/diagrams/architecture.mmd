@@ -1,0 +1,23 @@
+flowchart TB
+    subgraph Client["Browser"]
+        SPA["React + TypeScript SPA<br/>React Router - Redux Toolkit - RTK Query - RHF + Zod"]
+    end
+
+    subgraph Docker["Docker Compose"]
+        subgraph API["Spring Boot 4 API (Java 21)"]
+            SEC["Security filter chain<br/>JWT authentication + method authorization"]
+            WEB["Web layer - REST controllers<br/>(DTO in / DTO out)"]
+            SVC["Service layer<br/>business rules + transactions"]
+            REPO["Repository layer<br/>Spring Data JPA"]
+            JOBS["Scheduled jobs<br/>reservation reminders"]
+        end
+        DB[("PostgreSQL 16<br/>schema via Flyway")]
+    end
+
+    SPA -->|"HTTPS/JSON - Bearer JWT"| SEC
+    SEC --> WEB
+    WEB --> SVC
+    SVC --> REPO
+    REPO --> DB
+    JOBS --> SVC
+    SVC -.->|"notifications"| DB

@@ -241,10 +241,14 @@ Facilitybook/
 
 | Document | Contents |
 | --- | --- |
+| [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md) | Consolidated project report: what the project is, what we built, architecture, ERD, API surface, testing, deliverables. |
 | [`docs/SRS.md`](docs/SRS.md) | Software Requirements Specification: scope, roles, functional and non-functional requirements. |
 | [`docs/ERD.md`](docs/ERD.md) | Entity-relationship diagram and table descriptions. |
 | [`docs/USE_CASES.md`](docs/USE_CASES.md) | Use-case diagram and detailed use-case descriptions. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture diagram and layer/security design decisions. |
 | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) | Step-by-step guide for each role and workflow. |
 | [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md) | Automated test inventory, coverage of business rules, and how to run them. |
+| [`docs/SWAGGER_TESTING_GUIDE.md`](docs/SWAGGER_TESTING_GUIDE.md) | Click-by-click guide to exercising the API in Swagger UI, with seeded data and expected responses. |
+| [`docs/PRESENTATION.md`](docs/PRESENTATION.md) | Slide outline, live demo script, talking points, and pre-demo checklist. |
 | [`docs/CONTRIBUTION_REPORT.md`](docs/CONTRIBUTION_REPORT.md) | Template for each intern's individual contribution report. |
+| [`docs/diagrams/`](docs/diagrams/) | Mermaid sources and rendered PNGs for the ERD, architecture, and use-case diagrams. |
