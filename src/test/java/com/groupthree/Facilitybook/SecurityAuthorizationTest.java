@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,6 +68,48 @@ class SecurityAuthorizationTest {
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.message").value("Authentication required"))
                 .andExpect(jsonPath("$.path").value("/api/reservations/mine"));
+    }
+
+    @Test
+    void publicRegistrationCreatesPendingEmployeeUntilAdminApproval() throws Exception {
+        String email = "signup." + System.nanoTime() + "@facilitybook.local";
+        String password = "Password123!";
+        MvcResult registration = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s","fullName":"New Employee"}
+                                """.formatted(email, password)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("EMPLOYEE"))
+                .andExpect(jsonPath("$.active").value(false))
+                .andReturn();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, password)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("User account is disabled"));
+
+        long userId = ((Number) JsonPath.read(
+                registration.getResponse().getContentAsString(), "$.id")).longValue();
+        mockMvc.perform(put("/api/users/" + userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(login(ADMIN)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"active":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, password)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.role").value("EMPLOYEE"));
     }
 
     @Test
